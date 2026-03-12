@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RZ - URL de acesso local para a API (hostlocal) -->
+    <string name="URLAcesso">http://10.0.2.2:3000/</string>
+</resources>
