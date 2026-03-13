@@ -5,68 +5,79 @@ import com.example.myapitest.data.api.CarApi
 import com.example.myapitest.data.model.Car
 import com.example.myapitest.data.model.ItemResponse
 
-// RZ - O CarRepository coordena a persistência de dados.
-// O foco principal é a API Local (Node/Express), e o Firestore (rzcarapp) 
-// atua como uma réplica para manter os dados sincronizados na nuvem.
-
 class CarRepository(private val carApi: CarApi) {
 
-    // RZ - Busca a lista de carros da API Local e mapeia o envelope
-    suspend fun getCars(): List<Car>? {
+    // RZ - Busca a lista e usa uma busca recursiva para achar o carro real no JSON aninhado
+    suspend fun getCars(): List<Car> {
         return try {
             val response = carApi.fetchCars()
             if (response.isSuccessful) {
-                response.body()?.map { item ->
-                    item.value.copy(id = item.id)
+                val body = response.body() ?: emptyList()
+                body.map { item ->
+                    val realCar = findDeepData(item.value)
+                    realCar.copy(id = item.id)
                 }
-            } else null
+            } else {
+                emptyList()
+            }
         } catch (e: Exception) {
-            null
+            emptyList()
         }
     }
 
-    // RZ - Salva o carro na API Local e, se tiver sucesso, replica no Firestore
+    // RZ - Função recursiva: se o carro atual não tem nome mas tem um "value" dentro, mergulha mais fundo
+    private fun findDeepData(car: Car): Car {
+        return if (!car.name.isNullOrEmpty()) {
+            car
+        } else if (car.nestedValue != null) {
+            findDeepData(car.nestedValue)
+        } else {
+            car
+        }
+    }
+
     suspend fun saveCar(car: Car): Boolean {
         return try {
-            // RZ - Envia para a API Local (Foco Principal)
             val response = carApi.saveCar(ItemResponse(value = car))
             if (response.isSuccessful) {
-                val savedCar = response.body()?.value?.copy(id = response.body()?.id)
+                val body = response.body()
+                val savedCar = body?.let { findDeepData(it.value).copy(id = it.id) }
                 if (savedCar != null) {
-                    // RZ - Réplica no Firestore
                     FirestoreManager.saveCarToFirestore(savedCar)
                 }
                 true
-            } else false
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }
     }
 
-    // RZ - Atualiza o carro na API Local e replica a mudança no Firestore
     suspend fun updateCar(car: Car): Boolean {
         if (car.id == null) return false
         return try {
             val response = carApi.updateCar(car.id, ItemResponse(id = car.id, value = car))
             if (response.isSuccessful) {
-                // RZ - Réplica no Firestore
                 FirestoreManager.saveCarToFirestore(car)
                 true
-            } else false
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }
     }
 
-    // RZ - Remove o carro da API Local e também da réplica no Firestore
     suspend fun deleteCar(id: String): Boolean {
         return try {
             val response = carApi.deleteCar(id)
             if (response.isSuccessful) {
-                // RZ - Réplica no Firestore
                 FirestoreManager.deleteCarFromFirestore(id)
                 true
-            } else false
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }

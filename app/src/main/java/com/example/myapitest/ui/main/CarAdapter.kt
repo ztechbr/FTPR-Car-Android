@@ -15,10 +15,9 @@ import com.squareup.picasso.Picasso
 
 class CarAdapter(
     private var carList: List<Car>,
-    private val onCarClick: (Car) -> Unit // RZ - Adicionado callback de clique para abrir o mapa
+    private val onCarClick: (Car) -> Unit // RZ - Callback de clique para abrir o mapa
 ) : RecyclerView.Adapter<CarAdapter.CarViewHolder>() {
 
-    // RZ - O ViewHolder é quem segura as referências para os componentes visuais de cada item
     class CarViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgCar: ImageView = view.findViewById(R.id.image)
         val tvName: TextView = view.findViewById(R.id.model)
@@ -35,18 +34,21 @@ class CarAdapter(
         val car = carList[position]
         
         holder.tvName.text = car.name
-        holder.tvYear.text = car.year
-        holder.tvLicense.text = car.licence
+        holder.tvYear.text = "Ano: ${car.year}"
+        holder.tvLicense.text = "Placa: ${car.licence}"
 
-        if (car.imageUrl.isNotEmpty()) {
+        // RZ - Usa a imagem 'fotopadrao' (WebP) como padrão no carregamento e erros
+        if (!car.imageUrl.isNullOrEmpty()) {
+            // RZ - Picasso carregando a imagem da API
             Picasso.get()
                 .load(car.imageUrl)
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .error(android.R.drawable.stat_notify_error)
+                .placeholder(R.drawable.fotopadrao) // Foto padrão enquanto baixa
+                .error(R.drawable.fotopadrao)       // Foto padrão se o link falhar
                 .into(holder.imgCar)
+        } else {
+            holder.imgCar.setImageResource(R.drawable.fotopadrao)
         }
 
-        // RZ - Configura o clique no item para chamar o callback
         holder.itemView.setOnClickListener {
             onCarClick(car)
         }

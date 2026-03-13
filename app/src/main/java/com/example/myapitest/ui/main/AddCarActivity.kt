@@ -1,6 +1,7 @@
 package com.example.myapitest.ui.main
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -11,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.myapitest.R
 import com.example.myapitest.data.FirebaseStorageManager
 import com.example.myapitest.data.api.RetrofitClient
 import com.example.myapitest.data.model.Car
@@ -29,10 +31,22 @@ class AddCarActivity : AppCompatActivity() {
     private lateinit var carRepository: CarRepository
     private var selectedImageUri: Uri? = null
 
+    // RZ - Launcher para capturar o resultado da seleção de localização no mapa
+    private val selectLocationLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val lat = result.data?.getDoubleExtra("LAT", 0.0) ?: 0.0
+            val lng = result.data?.getDoubleExtra("LONG", 0.0) ?: 0.0
+            binding.etLat.setText(lat.toString())
+            binding.etLong.setText(lng.toString())
+            logConsole("RZ Console: Localização selecionada no mapa!")
+        }
+    }
+
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             selectedImageUri = it
             binding.ivCarPreview.setImageURI(it)
+            logConsole("RZ Console: Foto selecionada da galeria.")
         }
     }
 
@@ -41,7 +55,6 @@ class AddCarActivity : AppCompatActivity() {
         binding = ActivityAddCarBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // RZ - Exibe info do usuário e configura logout
         val user = FirebaseAuth.getInstance().currentUser
         binding.tvUserInfo.text = "${user?.phoneNumber} Logado"
         
@@ -62,8 +75,21 @@ class AddCarActivity : AppCompatActivity() {
             pickImageLauncher.launch("image/*")
         }
 
+        binding.btnDefaultPhoto.setOnClickListener {
+            val defaultImageUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + packageName + "/" + R.drawable.fotopadrao)
+            selectedImageUri = defaultImageUri
+            binding.ivCarPreview.setImageResource(R.drawable.fotopadrao)
+            logConsole("RZ Console: Usando a foto padrão.")
+        }
+
         binding.btnGetLocation.setOnClickListener {
             getCurrentLocation()
+        }
+
+        // RZ - Abre o mapa para seleção manual
+        binding.btnSelectLocation.setOnClickListener {
+            val intent = Intent(this, SelectLocationActivity::class.java)
+            selectLocationLauncher.launch(intent)
         }
 
         binding.btnSave.setOnClickListener {
@@ -82,9 +108,9 @@ class AddCarActivity : AppCompatActivity() {
             if (location != null) {
                 binding.etLat.setText(location.latitude.toString())
                 binding.etLong.setText(location.longitude.toString())
-                logConsole("RZ Console: Localização capturada com sucesso!")
+                logConsole("RZ Console: Localização capturada!")
             } else {
-                logConsole("RZ Console: Não foi possível obter a localização. Verifique o GPS.")
+                logConsole("RZ Console: Erro ao obter GPS.")
             }
         }
     }
@@ -97,19 +123,18 @@ class AddCarActivity : AppCompatActivity() {
         val lngStr = binding.etLong.text.toString()
 
         if (name.isEmpty() || year.isEmpty() || licence.isEmpty() || selectedImageUri == null || latStr.isEmpty() || lngStr.isEmpty()) {
-            logConsole("RZ Console: Erro! Preencha todos os campos e selecione a foto.")
+            logConsole("RZ Console: Erro! Preencha tudo.")
             return
         }
 
         lifecycleScope.launch {
             binding.progressBar.visibility = View.VISIBLE
             binding.btnSave.isEnabled = false
-            logConsole("RZ Console: Iniciando upload da imagem...")
+            logConsole("RZ Console: Salvando...")
 
             val imageUrl = FirebaseStorageManager.uploadImage(selectedImageUri!!)
 
             if (imageUrl != null) {
-                logConsole("RZ Console: Imagem OK! Salvando dados na API Local...")
                 val car = Car(
                     name = name,
                     year = year,
@@ -121,14 +146,14 @@ class AddCarActivity : AppCompatActivity() {
                 val success = carRepository.saveCar(car)
 
                 if (success) {
-                    logConsole("RZ Console: Sucesso! Carro cadastrado e replicado no Firestore.")
+                    logConsole("RZ Console: Carro salvo com sucesso!")
                     Toast.makeText(this@AddCarActivity, "Carro salvo!", Toast.LENGTH_SHORT).show()
                     finish()
                 } else {
-                    logConsole("RZ Console: Erro ao salvar na API Local.")
+                    logConsole("RZ Console: Erro na API Local.")
                 }
             } else {
-                logConsole("RZ Console: Erro no upload para o Storage.")
+                logConsole("RZ Console: Erro no Storage.")
             }
 
             binding.progressBar.visibility = View.GONE

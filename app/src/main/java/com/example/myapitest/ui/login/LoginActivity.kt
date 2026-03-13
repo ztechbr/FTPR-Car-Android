@@ -5,6 +5,10 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapitest.R
@@ -14,8 +18,7 @@ import com.google.firebase.auth.*
 import java.util.concurrent.TimeUnit
 
 // RZ - LoginActivity: A porta de entrada do app.
-// Aqui usamos o Firebase Auth para garantir que só usuários autenticados acessem os dados.
-// O fluxo é simples: envia o código para o telefone e valida o que o usuário digita.
+// Fluxo atualizado com feedback visual de carregamento e dicas claras.
 
 class LoginActivity : AppCompatActivity() {
 
@@ -26,6 +29,9 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etVerificationCode: EditText
     private lateinit var btnSendCode: Button
     private lateinit var btnLogin: Button
+    private lateinit var tvLoginError: TextView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var btnCloseApp: ImageButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,23 +43,45 @@ class LoginActivity : AppCompatActivity() {
         etVerificationCode = findViewById(R.id.etVerificationCode)
         btnSendCode = findViewById(R.id.btnSendCode)
         btnLogin = findViewById(R.id.btnLogin)
+        progressBar = findViewById(R.id.loginProgressBar)
+        btnCloseApp = findViewById(R.id.btnCloseApp)
+        
+        tvLoginError = TextView(this).apply {
+            visibility = View.GONE
+            setTextColor(android.graphics.Color.BLACK)
+            textSize = 14f
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, 16, 0, 16)
+        }
+        
+        // RZ - Busca o container linear interno para adicionar a mensagem de erro
+        val container = findViewById<LinearLayout>(R.id.loginContainer)
+        container?.addView(tvLoginError, container.indexOfChild(progressBar))
 
-        // RZ - Passo 1: Solicitar o código de verificação
         btnSendCode.setOnClickListener {
             val phoneNumber = etPhoneNumber.text.toString()
             if (phoneNumber.isNotEmpty()) {
+                tvLoginError.visibility = View.GONE
+                progressBar.visibility = View.VISIBLE
+                btnSendCode.isEnabled = false
                 startPhoneNumberVerification(phoneNumber)
             } else {
                 Toast.makeText(this, "Digite o número", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // RZ - Passo 2: Validar o código recebido e logar
         btnLogin.setOnClickListener {
             val code = etVerificationCode.text.toString()
             if (code.isNotEmpty() && verificationId != null) {
+                progressBar.visibility = View.VISIBLE
+                btnLogin.isEnabled = false
                 signInWithPhoneAuthCredential(PhoneAuthProvider.getCredential(verificationId!!, code))
             }
+        }
+
+        // RZ - Fecha o aplicativo se o usuário clicar no ícone de sair
+        btnCloseApp.setOnClickListener {
+            finishAffinity()
         }
     }
 
@@ -64,17 +92,19 @@ class LoginActivity : AppCompatActivity() {
             .setActivity(this)
             .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                 override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                    // RZ - Em alguns casos o login é automático se o Firebase detectar o SMS
                     signInWithPhoneAuthCredential(credential)
                 }
 
                 override fun onVerificationFailed(e: FirebaseException) {
-                    Toast.makeText(this@LoginActivity, "Falha: ${e.message}", Toast.LENGTH_LONG).show()
+                    progressBar.visibility = View.GONE
+                    btnSendCode.isEnabled = true
+                    tvLoginError.text = "NUMERO NÃO CADASTRADO\nUSO O NÚMERO EXEMPLO\nOU PEÇA O CADASTRO\nAO ADMINISTRADOR."
+                    tvLoginError.visibility = View.VISIBLE
                 }
 
                 override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
+                    progressBar.visibility = View.GONE
                     this@LoginActivity.verificationId = verificationId
-                    // RZ - Mostra os campos para digitar o código
                     etVerificationCode.visibility = View.VISIBLE
                     btnLogin.visibility = View.VISIBLE
                     btnSendCode.visibility = View.GONE
@@ -88,12 +118,14 @@ class LoginActivity : AppCompatActivity() {
     private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
+                progressBar.visibility = View.GONE
+                btnLogin.isEnabled = true
                 if (task.isSuccessful) {
-                    // RZ - Sucesso! Vai para a tela principal
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
                 } else {
-                    Toast.makeText(this, "Código inválido", Toast.LENGTH_SHORT).show()
+                    tvLoginError.text = "CÓDIGO INVÁLIDO"
+                    tvLoginError.visibility = View.VISIBLE
                 }
             }
     }

@@ -16,34 +16,75 @@
             <androidx.appcompat.widget.Toolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
+                android:layout_height="wrap_content"
+                android:minHeight="?attr/actionBarSize"
                 android:background="?attr/colorPrimary"
-                app:title="@string/app_name">
+                app:contentInsetStart="16dp"
+                app:contentInsetEnd="16dp">
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <RelativeLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
 
-                    <TextView
-                        android:id="@+id/tvUserInfo"
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="8dp"
-                        android:textColor="@android:color/white"
-                        android:textSize="12sp"
-                        tools:text="+5511912345678 Logado" />
+                        android:orientation="vertical"
+                        android:layout_alignParentStart="true"
+                        android:layout_toStartOf="@id/btnActionsContainer">
 
-                    <androidx.appcompat.widget.AppCompatImageButton
-                        android:id="@+id/btnLogout"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:src="@android:drawable/ic_lock_power_off"
-                        app:tint="@android:color/white" />
-                </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/app_name"
+                            android:textColor="@android:color/white"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvUserInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@android:color/white"
+                            android:textSize="12sp"
+                            tools:text="+5511912345678 Logado" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btnActionsContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnLogout"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="LOGOUT"
+                            android:textColor="@android:color/white"
+                            android:textSize="12sp"
+                            android:backgroundTint="#000000"
+                            app:cornerRadius="4dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
+
+                        <androidx.appcompat.widget.AppCompatImageButton
+                            android:id="@+id/btnCloseApp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_close"
+                            android:contentDescription="Sair do App"
+                            app:tint="@android:color/white" />
+                    </LinearLayout>
+                </RelativeLayout>
 
             </androidx.appcompat.widget.Toolbar>
 
@@ -64,11 +105,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:paddingTop="8dp"
-                    android:paddingBottom="60dp"
+                    android:paddingBottom="100dp"
                     android:clipToPadding="false"
                     tools:listitem="@layout/item_car_layout" />
 
-                <!-- RZ - Mensagem exibida quando não há carros cadastrados -->
                 <TextView
                     android:id="@+id/tvEmptyMessage"
                     android:layout_width="wrap_content"
@@ -83,18 +123,34 @@
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <!-- RZ - Caixa de mensagem no rodapé para exibir logs e erros em tempo real -->
-        <TextView
-            android:id="@+id/tvErrorLog"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:background="#CCCCCC"
-            android:padding="8dp"
-            android:textColor="#000000"
-            android:textSize="12sp"
-            android:text="Console RZ: Aguardando dados..."
-            android:visibility="visible" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvUserFooter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#E0E0E0"
+                android:padding="4dp"
+                android:gravity="center"
+                android:textColor="#000000"
+                android:textSize="11sp"
+                android:textStyle="italic"
+                tools:text="Usuário: +5511912345678" />
+
+            <TextView
+                android:id="@+id/tvErrorLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#CCCCCC"
+                android:padding="8dp"
+                android:textColor="#000000"
+                android:textSize="12sp"
+                android:text="Console RZ: Aguardando..." />
+        </LinearLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/addCta"
@@ -102,7 +158,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_marginEnd="24dp"
-            android:layout_marginBottom="64dp"
+            android:layout_marginBottom="110dp"
             android:contentDescription="Adicionar Carro"
             app:srcCompat="@android:drawable/ic_input_add"
             app:backgroundTint="#000000"

@@ -33,9 +33,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // RZ - Exibe a informação do usuário logado na Toolbar
+        // RZ - Exibe a informação do usuário logado na Toolbar e no Rodapé
         val userInfo = "${user.phoneNumber} Logado"
         binding.tvUserInfo.text = userInfo
+        binding.tvUserFooter.text = "Usuário: ${user.phoneNumber}"
         
         val carApi = RetrofitClient.getInstance(this)
         carRepository = CarRepository(carApi)
@@ -56,10 +57,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         carAdapter = CarAdapter(emptyList()) { car ->
+            // RZ - "Achata" o carro para garantir que os dados corretos sejam passados
+            val displayCar = car.nestedValue ?: car
+            
             val intent = Intent(this, CarMapActivity::class.java).apply {
-                putExtra("LAT", car.place.lat)
-                putExtra("LONG", car.place.long)
-                putExtra("NAME", car.name)
+                putExtra("ID", car.id) // O ID vem do envelope ItemResponse
+                putExtra("NAME", displayCar.name)
+                putExtra("YEAR", displayCar.year)
+                putExtra("LICENCE", displayCar.licence)
+                putExtra("IMAGE_URL", displayCar.imageUrl)
+                putExtra("LAT", displayCar.place?.lat ?: 0.0)
+                putExtra("LONG", displayCar.place?.long ?: 0.0)
             }
             startActivity(intent)
         }
@@ -77,7 +85,11 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
-        // RZ - Configura o clique do botão "+" para abrir a tela de cadastro
+        // RZ - Fecha o aplicativo literalmente (limpa da memória)
+        binding.btnCloseApp.setOnClickListener {
+            finishAffinity()
+        }
+
         binding.addCta.setOnClickListener {
             startActivity(Intent(this, AddCarActivity::class.java))
         }

@@ -22,7 +22,7 @@
         <!-- RZ - Cole sua API KEY do Google Maps aqui embaixo -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="COLE_SUA_CHAVE_AQUI" />
+            android:value="AIzaSyA2gDTVvOt6jIbP8emoHgLza-CXP-2y8Fs" />
 
         <!-- RZ - Activity de Login definida como Launcher do aplicativo -->
         <activity
@@ -48,6 +48,12 @@
             android:theme="@style/Theme.MyApiTest"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- RZ - Activity para selecionar localização manualmente no mapa -->
+        <activity
+            android:name=".ui.main.SelectLocationActivity"
+            android:theme="@style/Theme.MyApiTest"
+            android:exported="false" />
 
         <!-- RZ - Activity para exibição da localização no Google Maps -->
         <activity

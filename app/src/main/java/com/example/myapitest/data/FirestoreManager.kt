@@ -16,7 +16,8 @@ object FirestoreManager {
     // RZ - Salva ou atualiza os dados do carro no Firestore
     suspend fun saveCarToFirestore(car: Car): Boolean {
         return try {
-            val id = car.id ?: car.licence // Usa placa se não tiver ID
+            // RZ - O ID é necessário para salvar no Firestore. Tenta ID, depois placa, senão falha.
+            val id = car.id ?: car.licence ?: return false
             db.collection(COLLECTION_NAME)
                 .document(id)
                 .set(car)
