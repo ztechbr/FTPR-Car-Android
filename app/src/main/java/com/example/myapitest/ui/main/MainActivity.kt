@@ -2,7 +2,7 @@ package com.example.myapitest.ui.main
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -23,8 +23,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // RZ - Verifica se o usuário está autenticado no Firebase
-        if (FirebaseAuth.getInstance().currentUser == null) {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -33,7 +33,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // RZ - Inicializa o repositório com a API configurada via RetrofitClient
+        // RZ - Exibe a informação do usuário logado na Toolbar
+        val userInfo = "${user.phoneNumber} Logado"
+        binding.tvUserInfo.text = userInfo
+        
         val carApi = RetrofitClient.getInstance(this)
         carRepository = CarRepository(carApi)
 
@@ -52,7 +55,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        // RZ - Configura o RecyclerView com clique para abrir o mapa
         carAdapter = CarAdapter(emptyList()) { car ->
             val intent = Intent(this, CarMapActivity::class.java).apply {
                 putExtra("LAT", car.place.lat)
@@ -75,23 +77,45 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
-        // RZ - Configura o Swipe to Refresh para atualizar a lista manualmente
+        // RZ - Configura o clique do botão "+" para abrir a tela de cadastro
+        binding.addCta.setOnClickListener {
+            startActivity(Intent(this, AddCarActivity::class.java))
+        }
+
         binding.swipeRefreshLayout.setOnRefreshListener {
             fetchItems()
         }
     }
 
     private fun fetchItems() {
-        // RZ - Usa o lifecycleScope para rodar a chamada de rede de forma assíncrona
         lifecycleScope.launch {
             binding.swipeRefreshLayout.isRefreshing = true
-            val cars = carRepository.getCars()
-            if (cars != null) {
-                carAdapter.updateData(cars)
-            } else {
-                Toast.makeText(this@MainActivity, "Erro ao carregar carros", Toast.LENGTH_SHORT).show()
+            val baseUrl = getString(com.example.myapitest.R.string.URLAcesso)
+            logError("RZ Console: GET $baseUrl" + "items")
+
+            try {
+                val cars = carRepository.getCars()
+                
+                if (cars.isNullOrEmpty()) {
+                    carAdapter.updateData(emptyList())
+                    binding.tvEmptyMessage.visibility = View.VISIBLE
+                    logError("RZ Console: Não Existem Carros Cadastrados.")
+                } else {
+                    carAdapter.updateData(cars)
+                    binding.tvEmptyMessage.visibility = View.GONE
+                    logError("RZ Console: Sucesso! ${cars.size} carros carregados.")
+                }
+            } catch (e: Exception) {
+                logError("RZ Console Erro: ${e.message}")
+                binding.tvEmptyMessage.visibility = View.VISIBLE
+                binding.tvEmptyMessage.text = "Erro ao carregar dados"
             }
+            
             binding.swipeRefreshLayout.isRefreshing = false
         }
+    }
+
+    private fun logError(message: String) {
+        binding.tvErrorLog.text = message
     }
 }

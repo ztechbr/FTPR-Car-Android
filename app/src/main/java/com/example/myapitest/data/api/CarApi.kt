@@ -1,22 +1,22 @@
 package com.example.myapitest.data.api
 
 import com.example.myapitest.data.model.Car
+import com.example.myapitest.data.model.ItemResponse
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
+import retrofit2.http.*
 
-// RZ - O Retrofit é como um "tradutor" ou um "garçom" para o seu aplicativo. 
-// Imagine que a API (o servidor na internet) fala uma língua e o Android fala outra. 
-// O Retrofit pega as funções que a gente define aqui e as transforma em chamadas de rede reais, 
-// facilitando muito a busca e o envio de dados sem que a gente precise escrever todo o código 
-// chato de conexão manual. A função dele é simplificar a comunicação com serviços web.
-
+// RZ - Interface da API atualizada para suportar o CRUD completo (GET, POST, PATCH, DELETE)
 interface CarApi {
 
-    @GET("car")
-    suspend fun fetchCars(): Response<List<Car>>
+    @GET("items")
+    suspend fun fetchCars(): Response<List<ItemResponse>>
 
-    @POST("car")
-    suspend fun saveCar(@Body car: Car): Response<Car>
+    @POST("items")
+    suspend fun saveCar(@Body item: ItemResponse): Response<ItemResponse>
+
+    @PATCH("items/{id}")
+    suspend fun updateCar(@Path("id") id: String, @Body item: ItemResponse): Response<ItemResponse>
+
+    @DELETE("items/{id}")
+    suspend fun deleteCar(@Path("id") id: String): Response<Unit>
 }

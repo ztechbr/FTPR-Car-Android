@@ -20,15 +20,30 @@
                 android:background="?attr/colorPrimary"
                 app:title="@string/app_name">
 
-                <androidx.appcompat.widget.AppCompatImageButton
-                    android:id="@+id/btnLogout"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="end"
-                    android:layout_marginEnd="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_lock_power_off"
-                    android:tint="@android:color/white" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvUserInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="@android:color/white"
+                        android:textSize="12sp"
+                        tools:text="+5511912345678 Logado" />
+
+                    <androidx.appcompat.widget.AppCompatImageButton
+                        android:id="@+id/btnLogout"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@android:drawable/ic_lock_power_off"
+                        app:tint="@android:color/white" />
+                </LinearLayout>
 
             </androidx.appcompat.widget.Toolbar>
 
@@ -40,26 +55,58 @@
             android:layout_height="match_parent"
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerView"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingTop="8dp"
-                android:clipToPadding="false"
-                tools:listitem="@layout/item_car_layout" />
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="60dp"
+                    android:clipToPadding="false"
+                    tools:listitem="@layout/item_car_layout" />
+
+                <!-- RZ - Mensagem exibida quando não há carros cadastrados -->
+                <TextView
+                    android:id="@+id/tvEmptyMessage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="Não Existem Carros Cadastrados"
+                    android:textColor="#757575"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
+
+            </FrameLayout>
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <!-- RZ - Caixa de mensagem no rodapé para exibir logs e erros em tempo real -->
+        <TextView
+            android:id="@+id/tvErrorLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="#CCCCCC"
+            android:padding="8dp"
+            android:textColor="#000000"
+            android:textSize="12sp"
+            android:text="Console RZ: Aguardando dados..."
+            android:visibility="visible" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/addCta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
-            android:layout_margin="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="64dp"
             android:contentDescription="Adicionar Carro"
             app:srcCompat="@android:drawable/ic_input_add"
-            app:backgroundTint="?attr/colorPrimary"
-            app:tint="@android:color/white" />
+            app:backgroundTint="#000000"
+            app:tint="#FFFFFF" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>
