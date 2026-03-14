@@ -21,6 +21,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var carAdapter: CarAdapter
     private lateinit var carRepository: CarRepository
     private var lastLoadedCars: List<com.example.myapitest.data.model.Car> = emptyList()
+    
+    // RZ - Debounce para evitar abertura dupla acidental do card
+    private var isDetailOpening = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +51,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        isDetailOpening = false // RZ - Reseta a trava ao voltar para a lista
         if (FirebaseAuth.getInstance().currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -58,16 +62,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         carAdapter = CarAdapter(emptyList()) { car ->
-            val intent = Intent(this, CarMapActivity::class.java).apply {
-                putExtra("ID", car.id)
-                putExtra("NAME", car.name)
-                putExtra("YEAR", car.year)
-                putExtra("LICENCE", car.licence)
-                putExtra("IMAGE_URL", car.imageUrl)
-                putExtra("LAT", car.place?.lat ?: 0.0)
-                putExtra("LONG", car.place?.long ?: 0.0)
+            // RZ - Trava de segurança para não abrir 2x o mesmo card
+            if (!isDetailOpening) {
+                isDetailOpening = true
+                val intent = Intent(this, CarMapActivity::class.java).apply {
+                    putExtra("ID", car.id)
+                    putExtra("NAME", car.name)
+                    putExtra("YEAR", car.year)
+                    putExtra("LICENCE", car.licence)
+                    putExtra("IMAGE_URL", car.imageUrl)
+                    putExtra("LAT", car.place?.lat ?: 0.0)
+                    putExtra("LONG", car.place?.long ?: 0.0)
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
 
         binding.recyclerView.apply {
@@ -95,21 +103,20 @@ class MainActivity : AppCompatActivity() {
             fetchItems()
         }
 
-        // RZ - Botão de Backup: Pega os dados atuais da API e envia para o Firestore
         binding.btnBackup.setOnClickListener {
             if (lastLoadedCars.isNotEmpty()) {
                 lifecycleScope.launch {
                     logError("RZ Console: Iniciando Backup no Firestore...")
                     val success = FirestoreManager.backupAllToFirestore(this@MainActivity, lastLoadedCars)
                     if (success) {
-                        Toast.makeText(this@MainActivity, "Backup concluído com sucesso!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Backup concluído!", Toast.LENGTH_SHORT).show()
                         logError("RZ Console: Backup concluído!")
                     } else {
-                        logError("RZ Console Erro: Falha ao realizar Backup.")
+                        logError("RZ Console Erro: Falha no Backup.")
                     }
                 }
             } else {
-                Toast.makeText(this, "Nenhum dado carregado para backup", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Nenhum dado carregado", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -119,7 +126,7 @@ class MainActivity : AppCompatActivity() {
             binding.swipeRefreshLayout.isRefreshing = true
             try {
                 val cars = carRepository.getCars()
-                lastLoadedCars = cars // RZ - Armazena para o backup
+                lastLoadedCars = cars
                 
                 if (cars.isEmpty()) {
                     carAdapter.updateData(emptyList())
