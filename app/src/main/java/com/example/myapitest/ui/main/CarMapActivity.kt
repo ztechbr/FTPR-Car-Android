@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +28,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.launch
@@ -43,13 +45,18 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var etCarYear: EditText
     private lateinit var etCarLicence: EditText
     private lateinit var tvErrorLog: TextView
-    private lateinit var btnChangePhoto: MaterialButton
+    private lateinit var btnChangePhoto: FloatingActionButton
+    private lateinit var btnBack: ImageButton
+    private lateinit var btnDelete: ImageButton
+    private lateinit var btnUpdate: ImageButton
+    private lateinit var loadingOverlay: View
+    private lateinit var tvLoadingMessage: TextView
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             selectedImageUri = it
             ivCarPhoto.setImageURI(it)
-            logStatus("RZ Console: Nova foto selecionada! Clique em ATUALIZAR para salvar.")
+            logStatus("Nova foto selecionada! Salve para confirmar.")
         }
     }
 
@@ -72,6 +79,11 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
         etCarLicence = findViewById(R.id.etCarLicence)
         tvErrorLog = findViewById(R.id.tvErrorLog)
         btnChangePhoto = findViewById(R.id.btnChangePhoto)
+        btnBack = findViewById(R.id.btnBack)
+        btnDelete = findViewById(R.id.btnDelete)
+        btnUpdate = findViewById(R.id.btnUpdate)
+        loadingOverlay = findViewById(R.id.loadingOverlay)
+        tvLoadingMessage = findViewById(R.id.tvLoadingMessage)
 
         findViewById<TextView>(R.id.tvUserInfo).text = "${FirebaseAuth.getInstance().currentUser?.phoneNumber} Logado"
 
@@ -81,35 +93,21 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
             finishAffinity()
         }
 
-        // RZ - Botão para trocar a foto (abre galeria)
-        btnChangePhoto.setOnClickListener {
-            pickImageLauncher.launch("image/*")
-        }
-
-        findViewById<Button>(R.id.btnUpdate).setOnClickListener { updateCar() }
-        findViewById<Button>(R.id.btnDelete).setOnClickListener { showDeleteConfirmation() }
+        btnBack.setOnClickListener { finish() }
+        btnChangePhoto.setOnClickListener { pickImageLauncher.launch("image/*") }
+        btnUpdate.setOnClickListener { updateCar() }
+        btnDelete.setOnClickListener { showDeleteConfirmation() }
     }
 
     private fun loadCarData() {
         carId = intent.getStringExtra("ID")
         imageUrl = intent.getStringExtra("IMAGE_URL")
-        val name = intent.getStringExtra("NAME") ?: ""
-        val year = intent.getStringExtra("YEAR") ?: ""
-        val licence = intent.getStringExtra("LICENCE") ?: ""
-
-        etCarName.setText(name)
-        etCarYear.setText(year)
-        etCarLicence.setText(licence)
-
-        logStatus("Carregado: $name")
+        etCarName.setText(intent.getStringExtra("NAME"))
+        etCarYear.setText(intent.getStringExtra("YEAR"))
+        etCarLicence.setText(intent.getStringExtra("LICENCE"))
 
         if (!imageUrl.isNullOrEmpty()) {
-            // RZ - Picasso carregando a foto atual do carro nos detalhes
-            Picasso.get()
-                .load(imageUrl)
-                .placeholder(R.drawable.fotopadrao)
-                .error(R.drawable.fotopadrao)
-                .into(ivCarPhoto)
+            Picasso.get().load(imageUrl).placeholder(R.drawable.fotopadrao).error(R.drawable.fotopadrao).into(ivCarPhoto)
         }
     }
 
@@ -132,40 +130,25 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         lifecycleScope.launch {
-            logStatus("Salvando alterações...")
+            showLoading("Atualizando dados...")
             
             var finalImageUrl = imageUrl
-
-            // RZ - Se o usuário selecionou uma nova foto, faz o upload para o Firebase Storage
             if (selectedImageUri != null) {
-                logStatus("Fazendo upload da nova foto...")
                 val uploadedUrl = FirebaseStorageManager.uploadImage(selectedImageUri!!)
-                if (uploadedUrl != null) {
-                    finalImageUrl = uploadedUrl
-                } else {
-                    logStatus("Erro no upload da foto. Verifique conexão.")
-                    return@launch
-                }
+                if (uploadedUrl != null) finalImageUrl = uploadedUrl
             }
 
-            // RZ - Cria o objeto Car limpo (sem nestedValue) para enviar para a API
             val carToUpdate = Car(
-                id = carId,
-                name = name,
-                year = year,
-                licence = licence,
-                imageUrl = finalImageUrl,
-                place = Place(intent.getDoubleExtra("LAT", 0.0), intent.getDoubleExtra("LONG", 0.0))
+                id = carId, name = name, year = year, licence = licence,
+                imageUrl = finalImageUrl, place = Place(intent.getDoubleExtra("LAT", 0.0), intent.getDoubleExtra("LONG", 0.0))
             )
 
-            // RZ - Chama o método PATCH da API através do repositório
-            val success = carRepository.updateCar(carToUpdate)
-            
-            if (success) {
-                Toast.makeText(this@CarMapActivity, "Carro atualizado com sucesso!", Toast.LENGTH_SHORT).show()
+            if (carRepository.updateCar(carToUpdate)) {
+                Toast.makeText(this@CarMapActivity, "Carro atualizado!", Toast.LENGTH_SHORT).show()
                 finish()
             } else {
-                logStatus("Erro ao atualizar API. Verifique se o servidor está rodando.")
+                logStatus("Erro ao atualizar API.")
+                hideLoading()
             }
         }
     }
@@ -182,15 +165,25 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun deleteCar() {
         carId?.let { id ->
             lifecycleScope.launch {
-                logStatus("Apagando carro...")
+                showLoading("Removendo carro...")
                 if (carRepository.deleteCar(id)) {
                     Toast.makeText(this@CarMapActivity, "Carro removido!", Toast.LENGTH_SHORT).show()
-                    finish()
+                    finish() // RZ - Fecha a tela e volta para a lista
                 } else {
-                    logStatus("Erro ao apagar carro da API.")
+                    logStatus("Erro ao apagar carro.")
+                    hideLoading()
                 }
             }
         }
+    }
+
+    private fun showLoading(message: String) {
+        tvLoadingMessage.text = message
+        loadingOverlay.visibility = View.VISIBLE
+    }
+
+    private fun hideLoading() {
+        loadingOverlay.visibility = View.GONE
     }
 
     private fun logStatus(message: String) {

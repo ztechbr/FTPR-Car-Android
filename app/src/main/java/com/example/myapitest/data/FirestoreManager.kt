@@ -1,37 +1,37 @@
 package com.example.myapitest.data
 
+import android.content.Context
+import com.example.myapitest.R
 import com.example.myapitest.data.model.Car
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
-
-// RZ - Gerenciador do Firestore Database (rzcarapp).
-// A função dele é espelhar os dados da API no banco de dados do Google, 
-// garantindo que as informações e referências de imagem estejam seguras.
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 object FirestoreManager {
 
     private val db = FirebaseFirestore.getInstance()
-    private const val COLLECTION_NAME = "rzcarapp"
 
-    // RZ - Salva ou atualiza os dados do carro no Firestore
-    suspend fun saveCarToFirestore(car: Car): Boolean {
-        return try {
-            // RZ - O ID é necessário para salvar no Firestore. Tenta ID, depois placa, senão falha.
-            val id = car.id ?: car.licence ?: return false
-            db.collection(COLLECTION_NAME)
-                .document(id)
-                .set(car)
-                .await()
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
+    // RZ - Backup agora roda explicitamente em Dispatchers.IO para evitar travar a UI (ANR)
+    suspend fun backupAllToFirestore(context: Context, cars: List<Car>): Boolean = withContext(Dispatchers.IO) {
+        if (cars.isEmpty()) return@withContext false
+        
+        try {
+            val collectionPrefix = context.getString(R.string.FirestoreCollectionName)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
+            val fullCollectionPath = "${collectionPrefix}_$timeStamp"
 
-    // RZ - Remove o carro do Firestore
-    suspend fun deleteCarFromFirestore(id: String): Boolean {
-        return try {
-            db.collection(COLLECTION_NAME).document(id).delete().await()
+            cars.forEach { car ->
+                val docId = car.id ?: car.licence ?: UUID.randomUUID().toString()
+                // RZ - Limpa dados aninhados antes de subir para o backup
+                val cleanCar = car.copy(nestedValue = null)
+                db.collection(fullCollectionPath)
+                    .document(docId)
+                    .set(cleanCar)
+                    .await()
+            }
             true
         } catch (e: Exception) {
             false

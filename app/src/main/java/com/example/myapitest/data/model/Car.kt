@@ -11,7 +11,8 @@ data class Car(
     @SerializedName("licence") val licence: String? = "",
     @SerializedName("place") val place: Place? = Place(0.0, 0.0),
     
-    // RZ - Adicionado para lidar com o payload aninhado (value { value { ... } }) 
-    // que a API está retornando atualmente.
-    @SerializedName("value") val nestedValue: Car? = null
+    // RZ - Campo para capturar o aninhamento da API. 
+    // Removido @Transient para permitir que o App leia os dados corretamente.
+    @SerializedName("value") 
+    val nestedValue: Car? = null
 )

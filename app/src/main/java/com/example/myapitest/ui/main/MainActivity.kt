@@ -3,9 +3,11 @@ package com.example.myapitest.ui.main
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.myapitest.data.FirestoreManager
 import com.example.myapitest.data.api.RetrofitClient
 import com.example.myapitest.databinding.ActivityMainBinding
 import com.example.myapitest.repository.CarRepository
@@ -13,12 +15,12 @@ import com.example.myapitest.ui.login.LoginActivity
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
-// RZ - Refatorada para o pacote ui.main para organizar melhor o código
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var carAdapter: CarAdapter
     private lateinit var carRepository: CarRepository
+    private var lastLoadedCars: List<com.example.myapitest.data.model.Car> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,7 +35,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // RZ - Exibe a informação do usuário logado na Toolbar e no Rodapé
         val userInfo = "${user.phoneNumber} Logado"
         binding.tvUserInfo.text = userInfo
         binding.tvUserFooter.text = "Usuário: ${user.phoneNumber}"
@@ -57,17 +58,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         carAdapter = CarAdapter(emptyList()) { car ->
-            // RZ - "Achata" o carro para garantir que os dados corretos sejam passados
-            val displayCar = car.nestedValue ?: car
-            
             val intent = Intent(this, CarMapActivity::class.java).apply {
-                putExtra("ID", car.id) // O ID vem do envelope ItemResponse
-                putExtra("NAME", displayCar.name)
-                putExtra("YEAR", displayCar.year)
-                putExtra("LICENCE", displayCar.licence)
-                putExtra("IMAGE_URL", displayCar.imageUrl)
-                putExtra("LAT", displayCar.place?.lat ?: 0.0)
-                putExtra("LONG", displayCar.place?.long ?: 0.0)
+                putExtra("ID", car.id)
+                putExtra("NAME", car.name)
+                putExtra("YEAR", car.year)
+                putExtra("LICENCE", car.licence)
+                putExtra("IMAGE_URL", car.imageUrl)
+                putExtra("LAT", car.place?.lat ?: 0.0)
+                putExtra("LONG", car.place?.long ?: 0.0)
             }
             startActivity(intent)
         }
@@ -85,7 +83,6 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
-        // RZ - Fecha o aplicativo literalmente (limpa da memória)
         binding.btnCloseApp.setOnClickListener {
             finishAffinity()
         }
@@ -97,18 +94,34 @@ class MainActivity : AppCompatActivity() {
         binding.swipeRefreshLayout.setOnRefreshListener {
             fetchItems()
         }
+
+        // RZ - Botão de Backup: Pega os dados atuais da API e envia para o Firestore
+        binding.btnBackup.setOnClickListener {
+            if (lastLoadedCars.isNotEmpty()) {
+                lifecycleScope.launch {
+                    logError("RZ Console: Iniciando Backup no Firestore...")
+                    val success = FirestoreManager.backupAllToFirestore(this@MainActivity, lastLoadedCars)
+                    if (success) {
+                        Toast.makeText(this@MainActivity, "Backup concluído com sucesso!", Toast.LENGTH_SHORT).show()
+                        logError("RZ Console: Backup concluído!")
+                    } else {
+                        logError("RZ Console Erro: Falha ao realizar Backup.")
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Nenhum dado carregado para backup", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun fetchItems() {
         lifecycleScope.launch {
             binding.swipeRefreshLayout.isRefreshing = true
-            val baseUrl = getString(com.example.myapitest.R.string.URLAcesso)
-            logError("RZ Console: GET $baseUrl" + "items")
-
             try {
                 val cars = carRepository.getCars()
+                lastLoadedCars = cars // RZ - Armazena para o backup
                 
-                if (cars.isNullOrEmpty()) {
+                if (cars.isEmpty()) {
                     carAdapter.updateData(emptyList())
                     binding.tvEmptyMessage.visibility = View.VISIBLE
                     logError("RZ Console: Não Existem Carros Cadastrados.")
@@ -119,10 +132,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 logError("RZ Console Erro: ${e.message}")
-                binding.tvEmptyMessage.visibility = View.VISIBLE
-                binding.tvEmptyMessage.text = "Erro ao carregar dados"
             }
-            
             binding.swipeRefreshLayout.isRefreshing = false
         }
     }
