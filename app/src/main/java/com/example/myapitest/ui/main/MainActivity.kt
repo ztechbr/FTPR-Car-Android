@@ -22,7 +22,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var carRepository: CarRepository
     private var lastLoadedCars: List<com.example.myapitest.data.model.Car> = emptyList()
     
-    // RZ - Debounce para evitar abertura dupla acidental do card
     private var isDetailOpening = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        isDetailOpening = false // RZ - Reseta a trava ao voltar para a lista
+        isDetailOpening = false
         if (FirebaseAuth.getInstance().currentUser == null) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -62,7 +61,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         carAdapter = CarAdapter(emptyList()) { car ->
-            // RZ - Trava de segurança para não abrir 2x o mesmo card
             if (!isDetailOpening) {
                 isDetailOpening = true
                 val intent = Intent(this, CarMapActivity::class.java).apply {
@@ -99,6 +97,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, AddCarActivity::class.java))
         }
 
+        // RZ - Botão Refresh manual: limpa a lista e tenta buscar novamente
+        binding.btnRefresh.setOnClickListener {
+            carAdapter.updateData(emptyList()) // Limpa a UI
+            fetchItems() // Tenta nova conexão
+        }
+
         binding.swipeRefreshLayout.setOnRefreshListener {
             fetchItems()
         }
@@ -130,15 +134,19 @@ class MainActivity : AppCompatActivity() {
                 
                 if (cars.isEmpty()) {
                     carAdapter.updateData(emptyList())
+                    binding.tvEmptyMessage.text = "Não Existem Carros Cadastrados"
                     binding.tvEmptyMessage.visibility = View.VISIBLE
-                    logError("RZ Console: Não Existem Carros Cadastrados.")
+                    logError("RZ Console: Lista Vazia.")
                 } else {
                     carAdapter.updateData(cars)
                     binding.tvEmptyMessage.visibility = View.GONE
                     logError("RZ Console: Sucesso! ${cars.size} carros carregados.")
                 }
             } catch (e: Exception) {
-                logError("RZ Console Erro: ${e.message}")
+                carAdapter.updateData(emptyList())
+                binding.tvEmptyMessage.text = "Verifique sua rede - sem acesso ao servidor."
+                binding.tvEmptyMessage.visibility = View.VISIBLE
+                logError("RZ Console Erro: Servidor Inacessível.")
             }
             binding.swipeRefreshLayout.isRefreshing = false
         }

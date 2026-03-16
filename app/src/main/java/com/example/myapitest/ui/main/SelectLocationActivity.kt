@@ -20,15 +20,26 @@ class SelectLocationActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var binding: ActivitySelectLocationBinding
     private lateinit var mMap: GoogleMap
+    private var initialLat: Double = 0.0
+    private var initialLong: Double = 0.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySelectLocationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // RZ - Tenta pegar a localização inicial passada pela tela anterior
+        initialLat = intent.getDoubleExtra("LAT", 0.0)
+        initialLong = intent.getDoubleExtra("LONG", 0.0)
+
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        // RZ - Botão de retorno caso o usuário desista
+        binding.btnBack.setOnClickListener {
+            finish()
+        }
 
         binding.btnConfirmLocation.setOnClickListener {
             val center = mMap.cameraPosition.target
@@ -44,19 +55,23 @@ class SelectLocationActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        // RZ - Habilita os controles de zoom (botões +/-) e gestos no mapa
         mMap.uiSettings.isZoomControlsEnabled = true
         mMap.uiSettings.isZoomGesturesEnabled = true
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mMap.isMyLocationEnabled = true
-            
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    // RZ - Zoom nível cidade (12f)
-                    val currentLatLng = LatLng(location.latitude, location.longitude)
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
+        // RZ - Se uma localização inicial foi fornecida (diferente de 0), inicia o mapa nela.
+        // Caso contrário, tenta pegar o GPS atual ou mantém no ponto zero.
+        if (initialLat != 0.0 || initialLong != 0.0) {
+            val startLatLng = LatLng(initialLat, initialLong)
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 15f))
+        } else {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                mMap.isMyLocationEnabled = true
+                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    if (location != null) {
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
+                    }
                 }
             }
         }

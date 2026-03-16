@@ -39,6 +39,9 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
     private var carId: String? = null
     private var imageUrl: String? = null
     private var selectedImageUri: Uri? = null
+    private var carLat: Double = 0.0
+    private var carLong: Double = 0.0
+    private var mMap: GoogleMap? = null
 
     private lateinit var ivCarPhoto: ImageView
     private lateinit var etCarName: EditText
@@ -49,6 +52,7 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var btnBack: ImageButton
     private lateinit var btnDelete: ImageButton
     private lateinit var btnUpdate: ImageButton
+    private lateinit var btnNewLocation: MaterialButton
     private lateinit var loadingOverlay: View
     private lateinit var tvLoadingMessage: TextView
 
@@ -57,6 +61,15 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
             selectedImageUri = it
             ivCarPhoto.setImageURI(it)
             logStatus("Nova foto selecionada! Salve para confirmar.")
+        }
+    }
+
+    private val selectLocationLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            carLat = result.data?.getDoubleExtra("LAT", 0.0) ?: 0.0
+            carLong = result.data?.getDoubleExtra("LONG", 0.0) ?: 0.0
+            updateMapPosition()
+            logStatus("Localização atualizada! Clique no ícone de salvar para gravar.")
         }
     }
 
@@ -82,6 +95,7 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
         btnBack = findViewById(R.id.btnBack)
         btnDelete = findViewById(R.id.btnDelete)
         btnUpdate = findViewById(R.id.btnUpdate)
+        btnNewLocation = findViewById(R.id.btnNewLocation)
         loadingOverlay = findViewById(R.id.loadingOverlay)
         tvLoadingMessage = findViewById(R.id.tvLoadingMessage)
 
@@ -95,6 +109,16 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
         btnBack.setOnClickListener { finish() }
         btnChangePhoto.setOnClickListener { pickImageLauncher.launch("image/*") }
+        
+        btnNewLocation.setOnClickListener {
+            // RZ - Passa a localização ATUAL do carro para que o mapa inicie nela
+            val intent = Intent(this, SelectLocationActivity::class.java).apply {
+                putExtra("LAT", carLat)
+                putExtra("LONG", carLong)
+            }
+            selectLocationLauncher.launch(intent)
+        }
+
         btnUpdate.setOnClickListener { updateCar() }
         btnDelete.setOnClickListener { showDeleteConfirmation() }
     }
@@ -105,6 +129,8 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
         etCarName.setText(intent.getStringExtra("NAME"))
         etCarYear.setText(intent.getStringExtra("YEAR"))
         etCarLicence.setText(intent.getStringExtra("LICENCE"))
+        carLat = intent.getDoubleExtra("LAT", 0.0)
+        carLong = intent.getDoubleExtra("LONG", 0.0)
 
         if (!imageUrl.isNullOrEmpty()) {
             Picasso.get().load(imageUrl).placeholder(R.drawable.fotopadrao).error(R.drawable.fotopadrao).into(ivCarPhoto)
@@ -112,11 +138,17 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        val lat = intent.getDoubleExtra("LAT", 0.0)
-        val lng = intent.getDoubleExtra("LONG", 0.0)
-        val carLocation = LatLng(lat, lng)
-        googleMap.addMarker(MarkerOptions().position(carLocation).title(etCarName.text.toString()))
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(carLocation, 15f))
+        mMap = googleMap
+        updateMapPosition()
+    }
+
+    private fun updateMapPosition() {
+        mMap?.let { map ->
+            val carLocation = LatLng(carLat, carLong)
+            map.clear()
+            map.addMarker(MarkerOptions().position(carLocation).title(etCarName.text.toString()))
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(carLocation, 15f))
+        }
     }
 
     private fun updateCar() {
@@ -140,7 +172,7 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
             val carToUpdate = Car(
                 id = carId, name = name, year = year, licence = licence,
-                imageUrl = finalImageUrl, place = Place(intent.getDoubleExtra("LAT", 0.0), intent.getDoubleExtra("LONG", 0.0))
+                imageUrl = finalImageUrl, place = Place(carLat, carLong)
             )
 
             if (carRepository.updateCar(carToUpdate)) {
@@ -168,7 +200,7 @@ class CarMapActivity : AppCompatActivity(), OnMapReadyCallback {
                 showLoading("Removendo carro...")
                 if (carRepository.deleteCar(id)) {
                     Toast.makeText(this@CarMapActivity, "Carro removido!", Toast.LENGTH_SHORT).show()
-                    finish() // RZ - Fecha a tela e volta para a lista
+                    finish()
                 } else {
                     logStatus("Erro ao apagar carro.")
                     hideLoading()

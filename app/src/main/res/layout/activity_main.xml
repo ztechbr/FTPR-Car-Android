@@ -163,6 +163,18 @@
         </LinearLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnRefresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="24dp"
+            android:layout_marginBottom="110dp"
+            android:contentDescription="Atualizar Lista"
+            app:srcCompat="@drawable/ic_refresh"
+            app:backgroundTint="#000000"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/addCta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
