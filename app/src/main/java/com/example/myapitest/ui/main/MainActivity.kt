@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.myapitest.R
 import com.example.myapitest.data.FirestoreManager
 import com.example.myapitest.data.api.RetrofitClient
 import com.example.myapitest.databinding.ActivityMainBinding
@@ -97,10 +98,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, AddCarActivity::class.java))
         }
 
-        // RZ - Botão Refresh manual: limpa a lista e tenta buscar novamente
         binding.btnRefresh.setOnClickListener {
-            carAdapter.updateData(emptyList()) // Limpa a UI
-            fetchItems() // Tenta nova conexão
+            carAdapter.updateData(emptyList())
+            fetchItems()
         }
 
         binding.swipeRefreshLayout.setOnRefreshListener {
@@ -110,17 +110,32 @@ class MainActivity : AppCompatActivity() {
         binding.btnBackup.setOnClickListener {
             if (lastLoadedCars.isNotEmpty()) {
                 lifecycleScope.launch {
-                    logError("RZ Console: Iniciando Backup no Firestore...")
-                    val success = FirestoreManager.backupAllToFirestore(this@MainActivity, lastLoadedCars)
-                    if (success) {
-                        Toast.makeText(this@MainActivity, "Backup concluído!", Toast.LENGTH_SHORT).show()
-                        logError("RZ Console: Backup concluído!")
-                    } else {
-                        logError("RZ Console Erro: Falha no Backup.")
+                    // RZ - Mostra o overlay e reseta o status
+                    binding.loadingOverlay.visibility = View.VISIBLE
+                    binding.tvBackupStatus.text = "Iniciando..."
+                    logError("RZ Console: Iniciando Backup no Cloud Firestore...")
+
+                    // RZ - Chama o backup passando o callback para atualizar a segunda linha
+                    val result = FirestoreManager.backupAllToFirestoreDetailed(this@MainActivity, lastLoadedCars) { status ->
+                        // Atualiza o texto na Thread Principal
+                        runOnUiThread {
+                            binding.tvBackupStatus.text = status
+                        }
                     }
+
+                    if (result.success) {
+                        val msg = "Backup Salvo! Host: firestore.google.com | Collection: ${result.collectionPath}"
+                        Toast.makeText(this@MainActivity, "Backup Concluído!", Toast.LENGTH_LONG).show()
+                        logError("RZ Console: $msg")
+                    } else {
+                        logError("RZ Console Erro: ${result.message}")
+                        Toast.makeText(this@MainActivity, "Erro no Backup! Veja o rodapé.", Toast.LENGTH_SHORT).show()
+                    }
+
+                    binding.loadingOverlay.visibility = View.GONE
                 }
             } else {
-                Toast.makeText(this, "Nenhum dado carregado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Nenhum dado para backup", Toast.LENGTH_SHORT).show()
             }
         }
     }

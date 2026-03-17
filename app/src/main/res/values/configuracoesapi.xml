@@ -4,5 +4,6 @@
     <string name="URLAcesso">http://10.0.2.2:3000/</string>
 
     <!-- RZ - Configurações do Firestore para Backup -->
+    <string name="FirestoreDatabaseName">rzcarapp</string>
     <string name="FirestoreCollectionName">rzcarapp_backups</string>
 </resources>

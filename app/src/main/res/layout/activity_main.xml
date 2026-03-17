@@ -215,6 +215,16 @@
                     android:text="Realizando Backup..."
                     android:textColor="#000000"
                     android:textStyle="bold" />
+                <!-- RZ - Segunda linha para etapas e mensagens de erro -->
+                <TextView
+                    android:id="@+id/tvBackupStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Iniciando..."
+                    android:textColor="#757575"
+                    android:textSize="12sp"
+                    android:gravity="center" />
             </LinearLayout>
         </FrameLayout>
 
