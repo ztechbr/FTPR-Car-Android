@@ -81,7 +81,17 @@ class AddCarActivity : AppCompatActivity() {
         binding.btnGetLocation.setOnClickListener { getCurrentLocation() }
 
         binding.btnSelectLocation.setOnClickListener {
-            selectLocationLauncher.launch(Intent(this, SelectLocationActivity::class.java))
+            val latStr = binding.etLat.text.toString()
+            val lngStr = binding.etLong.text.toString()
+            val intent = Intent(this, SelectLocationActivity::class.java)
+            
+            // RZ - Passa os valores se já estiverem preenchidos, caso contrário o SelectLocationActivity usará o padrão (Cristo Redentor)
+            if (latStr.isNotEmpty() && lngStr.isNotEmpty()) {
+                intent.putExtra("LAT", latStr.toDoubleOrNull() ?: 0.0)
+                intent.putExtra("LONG", lngStr.toDoubleOrNull() ?: 0.0)
+            }
+            
+            selectLocationLauncher.launch(intent)
         }
 
         binding.btnSave.setOnClickListener { saveCar() }
@@ -115,7 +125,6 @@ class AddCarActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            // RZ - Mostra o overlay de carregamento (ampulheta)
             binding.loadingOverlay.visibility = View.VISIBLE
             logConsole("Salvando na API...")
 
@@ -139,7 +148,6 @@ class AddCarActivity : AppCompatActivity() {
                 logConsole("Erro no upload da imagem.")
             }
 
-            // RZ - Esconde o overlay se houver falha
             binding.loadingOverlay.visibility = View.GONE
         }
     }

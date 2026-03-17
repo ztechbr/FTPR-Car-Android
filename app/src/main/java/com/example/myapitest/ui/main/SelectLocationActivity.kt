@@ -23,6 +23,10 @@ class SelectLocationActivity : AppCompatActivity(), OnMapReadyCallback {
     private var initialLat: Double = 0.0
     private var initialLong: Double = 0.0
 
+    // RZ - Coordenadas padrão: Cristo Redentor, Rio de Janeiro
+    private val DEFAULT_LAT = -22.951916
+    private val DEFAULT_LNG = -43.2104872
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySelectLocationBinding.inflate(layoutInflater)
@@ -59,21 +63,18 @@ class SelectLocationActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.uiSettings.isZoomGesturesEnabled = true
 
         // RZ - Se uma localização inicial foi fornecida (diferente de 0), inicia o mapa nela.
-        // Caso contrário, tenta pegar o GPS atual ou mantém no ponto zero.
-        if (initialLat != 0.0 || initialLong != 0.0) {
-            val startLatLng = LatLng(initialLat, initialLong)
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 15f))
+        // Se não foi fornecida, usa o padrão (Cristo Redentor).
+        val startLatLng = if (initialLat != 0.0 || initialLong != 0.0) {
+            LatLng(initialLat, initialLong)
         } else {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                mMap.isMyLocationEnabled = true
-                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        val currentLatLng = LatLng(location.latitude, location.longitude)
-                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
-                    }
-                }
-            }
+            LatLng(DEFAULT_LAT, DEFAULT_LNG)
+        }
+        
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 15f))
+
+        // RZ - Tenta mostrar a bolinha azul se tiver permissão, mas mantém o foco no ponto selecionado acima
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mMap.isMyLocationEnabled = true
         }
     }
 }
